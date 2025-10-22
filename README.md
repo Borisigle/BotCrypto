@@ -10,6 +10,7 @@ and alerting hooks for stalled data feeds or cadence deviations.
 - **Dashboard UI** with status panels summarising ingestion freshness, signal health, and performance KPIs.
 - **Prometheus endpoint** (`/metrics/prometheus`) ready for Grafana dashboards.
 - **Alerting harness** that can push webhooks when latency or cadence thresholds are violated.
+- **Backtesting engine** producing hit-rate, expectancy, and drawdown metrics across 30–90 day windows with JSON/CSV exports.
 - **File-based snapshot store** for rapid prototyping that can be swapped with a persistent datastore later.
 
 ## Quick start
@@ -29,12 +30,15 @@ Visit [http://localhost:8080/dashboard](http://localhost:8080/dashboard) to view
 app/
   ├── main.py             # FastAPI application bootstrap
   ├── config.py           # Runtime configuration and thresholds
+  ├── backtest.py         # Backtesting engine and reporting helpers
   ├── data_source.py      # File-backed repository used by the metrics service
   ├── metrics_service.py  # Aggregation logic for latency, signal, and performance stats
   ├── alerting.py         # Alert evaluation and webhook dispatch
   ├── templates/          # Jinja templates for the dashboard view
   └── static/             # Static assets (CSS)
 app/data/sample_metrics.json  # Example snapshot powering the metrics
+scripts/run_backtest.py       # Command-line helper for analysts
 ```
 
 Further implementation and monitoring guidance is provided in [`docs/monitoring.md`](docs/monitoring.md).
+Additional details on the backtesting subsystem can be found in [`docs/backtesting.md`](docs/backtesting.md).

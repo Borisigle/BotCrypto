@@ -97,3 +97,4 @@ The rest of the service remains untouched thanks to the `MetricsSnapshot` schema
 - Update `app/data/sample_metrics.json` with recent snapshots to test edge cases (stalled feeds, losses, etc.).
 - Trigger the alert path with `curl -X POST http://localhost:8080/api/v1/alerts/evaluate`.
 - Scrape metrics via `curl http://localhost:8080/metrics/prometheus` to validate Prometheus output.
+- Review [`docs/backtesting.md`](backtesting.md) for guidance on running the signal performance backtests and exporting JSON/CSV summaries.
