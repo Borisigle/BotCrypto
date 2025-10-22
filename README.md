@@ -26,6 +26,41 @@ uvicorn app.main:app --reload
 
 Visit [http://localhost:8080/dashboard](http://localhost:8080/dashboard) to view the monitoring dashboard.
 
+## Docker Compose environment
+
+A multi-service Docker Compose stack is provided to run the API, worker, web frontend, TimescaleDB, and Redis locally.
+
+### Prerequisites
+
+- Docker Engine 24+
+- Docker Compose v2 (available via the `docker compose` CLI)
+
+### Starting the stack
+
+```bash
+./scripts/compose_up.sh
+```
+
+The helper script forwards any extra flags to `docker compose`. For example, append `--build` to force an image rebuild.
+
+Once the stack is running:
+
+- **API** (FastAPI) is available at [http://localhost:8080](http://localhost:8080) with its health check at `/api/v1/health` and the dashboard at `/dashboard`.
+- **Web placeholder** (Node/Express) serves a hand-off page at [http://localhost:3000](http://localhost:3000).
+- **TimescaleDB** listens on `postgresql://monitor:monitor@localhost:5432/monitoring` with the Timescale extension pre-enabled.
+- **Redis** is exposed on [redis://localhost:6379](redis://localhost:6379).
+- **Worker** logs can be tailed with `docker compose logs -f worker` and periodically process the bundled market snapshot.
+
+Both the API and worker containers wait for the database to accept connections and run a placeholder Alembic migration hook before starting.
+
+### Stopping the stack
+
+```bash
+./scripts/compose_down.sh
+```
+
+Pass `-v` to remove the TimescaleDB volume when you want a fresh database (`./scripts/compose_down.sh -v`).
+
 ## Project layout
 
 ```

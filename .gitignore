@@ -12,3 +12,5 @@ pytest_cache/
 .cache/
 app/data/backtest_logs/
 app/data/binance/
+node_modules/
+web/node_modules/

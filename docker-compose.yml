@@ -1,0 +1,112 @@
+version: "3.9"
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:2.14.2-pg16
+    environment:
+      POSTGRES_USER: monitor
+      POSTGRES_PASSWORD: monitor
+      POSTGRES_DB: monitoring
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./scripts/docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monitor -d monitoring"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - backend
+
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - backend
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql://monitor:monitor@timescaledb:5432/monitoring
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_USER: monitor
+      DB_PASSWORD: monitor
+      DB_NAME: monitoring
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://monitor:monitor@timescaledb:5432/monitoring
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_USER: monitor
+      DB_PASSWORD: monitor
+      DB_NAME: monitoring
+      REDIS_URL: redis://redis:6379/0
+      WORKER_INTERVAL_SECONDS: 120
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    environment:
+      API_BASE_URL: http://api:8080
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - backend
+
+volumes:
+  timescale_data:
+
+networks:
+  backend:
+    driver: bridge
