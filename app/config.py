@@ -50,6 +50,7 @@ class Settings:
     web_base_url: Optional[str] = None
     redis_url: Optional[str] = None
     indicator_cache_ttl_seconds: int = 30
+    timescale_dsn: Optional[str] = None
 
     @property
     def snapshot_exists(self) -> bool:
@@ -203,4 +204,5 @@ def get_settings() -> Settings:
             1,
             _resolve_int(os.getenv("INDICATOR_CACHE_TTL_SECONDS"), 30),
         ),
+        timescale_dsn=os.getenv("TIMESCALE_DSN"),
     )
