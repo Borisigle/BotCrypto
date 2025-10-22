@@ -43,6 +43,10 @@ class Settings:
     environment: str
     telegram_bot_token: Optional[str]
     telegram_chat_id: Optional[str]
+    # Telegram signal alerting configuration
+    signal_alerts_enabled: bool = False
+    signal_alerts_include_medium: bool = False
+    web_base_url: Optional[str] = None
 
     @property
     def snapshot_exists(self) -> bool:
@@ -75,6 +79,17 @@ def _resolve_int(value: str, fallback: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return int(fallback)
+
+
+def _resolve_bool(value: Optional[str], fallback: bool) -> bool:
+    if value is None:
+        return fallback
+    val = value.strip().lower()
+    if val in {"1", "true", "yes", "y", "on"}:
+        return True
+    if val in {"0", "false", "no", "n", "off"}:
+        return False
+    return fallback
 
 
 def _resolve_int_sequence(value: Optional[str], fallback: Tuple[int, ...]) -> Tuple[int, ...]:
@@ -165,4 +180,7 @@ def get_settings() -> Settings:
         environment=os.getenv("APP_ENV", "development"),
         telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN"),
         telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID"),
+        signal_alerts_enabled=_resolve_bool(os.getenv("SIGNAL_ALERTS_ENABLED"), False),
+        signal_alerts_include_medium=_resolve_bool(os.getenv("SIGNAL_ALERTS_INCLUDE_MEDIUM"), False),
+        web_base_url=os.getenv("WEB_BASE_URL"),
     )
