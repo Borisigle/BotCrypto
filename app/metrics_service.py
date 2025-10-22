@@ -107,6 +107,9 @@ class MetricsService:
                 last_24_hours=0,
                 cadence_seconds_avg=None,
                 status=HealthStatus.CRITICAL,
+                by_setup={},
+                confidence_breakdown={},
+                average_score=None,
             )
 
         status_counts = Counter(signal.status for signal in signals)
@@ -127,6 +130,23 @@ class MetricsService:
             cadence_values = diffs
         cadence_avg = mean(cadence_values) if cadence_values else None
 
+        setup_counts = Counter(
+            signal.setup.type.value
+            for signal in signals
+            if signal.setup is not None
+        )
+        confidence_counts = Counter(
+            signal.setup.confidence.value
+            for signal in signals
+            if signal.setup is not None
+        )
+        score_values = [
+            signal.setup.score
+            for signal in signals
+            if signal.setup is not None
+        ]
+        average_score = mean(score_values) if score_values else None
+
         status = self._evaluate_signal_status(last_60, cadence_avg)
 
         return SignalSummary(
@@ -136,6 +156,9 @@ class MetricsService:
             last_24_hours=last_24,
             cadence_seconds_avg=cadence_avg,
             status=status,
+            by_setup=dict(setup_counts),
+            confidence_breakdown=dict(confidence_counts),
+            average_score=average_score,
         )
 
     def _evaluate_signal_status(

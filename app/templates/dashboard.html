@@ -34,6 +34,7 @@
             <li>Last 60 min: {{ metrics.signals.last_60_minutes }}</li>
             <li>Last 24 h: {{ metrics.signals.last_24_hours }}</li>
             <li>Avg cadence: {{ ("%.0f"|format(metrics.signals.cadence_seconds_avg)) if metrics.signals.cadence_seconds_avg is not none else "n/a" }} s</li>
+            <li>Avg setup score: {{ ("%.2f"|format(metrics.signals.average_score)) if metrics.signals.average_score is not none else "n/a" }}</li>
           </ul>
         </article>
 
@@ -92,6 +93,54 @@
             {% else %}
             <tr>
               <td colspan="2">No signals tracked.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>Signals by setup</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Setup</th>
+              <th>Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for setup_name, count in metrics.signals.by_setup.items() %}
+            <tr>
+              <td>{{ setup_name }}</td>
+              <td>{{ count }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="2">No setup classifications available.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>Confidence breakdown</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Confidence</th>
+              <th>Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for confidence, count in metrics.signals.confidence_breakdown.items() %}
+            <tr>
+              <td>{{ confidence }}</td>
+              <td>{{ count }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="2">No confidence tags recorded.</td>
             </tr>
             {% endfor %}
           </tbody>

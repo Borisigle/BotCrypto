@@ -29,7 +29,41 @@
       "generated_at": "2099-10-21T19:55:00Z",
       "cadence_seconds": 600,
       "outcome": "win",
-      "return_pct": 0.012
+      "return_pct": 0.012,
+      "setup": {
+        "type": "squeeze_reversal",
+        "confidence": "high",
+        "score": 0.82,
+        "metadata": {
+          "bb_width": 0.009,
+          "kc_width": 0.014,
+          "compression_ratio": 0.6429,
+          "momentum": 0.32,
+          "momentum_shift": 0.41,
+          "funding_rate": -0.002,
+          "basis": 0.0015
+        },
+        "volume_profile": {
+          "bins": [
+            {
+              "price": 27000,
+              "buy_volume": 8.0,
+              "sell_volume": 5.0,
+              "total_volume": 13.0
+            },
+            {
+              "price": 27005,
+              "buy_volume": 6.5,
+              "sell_volume": 3.0,
+              "total_volume": 9.5
+            }
+          ],
+          "value_area": [
+            27000,
+            27005
+          ]
+        }
+      }
     },
     {
       "id": 1202,
@@ -38,7 +72,38 @@
       "generated_at": "2099-10-21T19:45:00Z",
       "cadence_seconds": 900,
       "outcome": "loss",
-      "return_pct": -0.006
+      "return_pct": -0.006,
+      "setup": {
+        "type": "absorption",
+        "confidence": "medium",
+        "score": 0.71,
+        "metadata": {
+          "orderflow_imbalance": 1.9,
+          "delta_volume": 1.4,
+          "basis": 0.0004,
+          "liquidation_cluster": 0.55
+        },
+        "volume_profile": {
+          "bins": [
+            {
+              "price": 1800,
+              "buy_volume": 4.2,
+              "sell_volume": 2.5,
+              "total_volume": 6.7
+            },
+            {
+              "price": 1805,
+              "buy_volume": 3.8,
+              "sell_volume": 3.1,
+              "total_volume": 6.9
+            }
+          ],
+          "value_area": [
+            1800,
+            1805
+          ]
+        }
+      }
     },
     {
       "id": 1198,
