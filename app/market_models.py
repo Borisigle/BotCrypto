@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from pydantic import BaseModel, Field
 
@@ -92,3 +92,13 @@ class MarketDataset(BaseModel):
     markets: List[MarketInstrument]
     signals: List[SignalFeedItem]
     sessions: List[str] = Field(default_factory=list)
+
+
+class SignalDebugReport(BaseModel):
+    signal_id: int
+    symbol: str
+    confidence: Optional[str] = None
+    session: Optional[str] = None
+    tier: Optional[str] = None
+    contributions: Dict[str, float] = Field(default_factory=dict)
+    total_score: float = 0.0

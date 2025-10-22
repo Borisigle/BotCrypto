@@ -4,6 +4,7 @@ import asyncio
 import json
 from pathlib import Path
 from typing import AsyncGenerator, Dict, List, Optional
+import logging
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse
@@ -16,12 +17,13 @@ from .config import Settings, get_settings
 from .data_source import FileMetricsRepository, MetricsRepositoryError
 from .governance import SignalGovernance, TelegramNotifier
 from .market_data import MarketDataError, MarketDataRepository
-from .market_models import MarketSnapshot, SignalFeed
+from .market_models import MarketSnapshot, SignalFeed, SignalFeedItem, SignalDebugReport
 from .metrics_service import MetricsService
 from .models import AggregatedMetrics, AlertDispatchResult, GovernanceStatus, HealthResponse
 from .signal_alerts import SignalAlertPipeline
 
 app = FastAPI(title="Ingestion Monitoring Service", version="0.1.0")
+logger = logging.getLogger(__name__)
 
 _governance_instance: Optional[SignalGovernance] = None
 _signal_alerts_instance: Optional[SignalAlertPipeline] = None
@@ -206,6 +208,28 @@ def signal_feed(
     return feed
 
 
+@app.get("/api/v1/signals/{signal_id}", response_model=SignalFeedItem)
+def signal_by_id(
+    signal_id: int,
+    repository: MarketDataRepository = Depends(get_market_data_repository),
+) -> SignalFeedItem:
+    try:
+        return repository.signal_by_id(signal_id)
+    except MarketDataError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@app.get("/api/v1/signals/{signal_id}/debug", response_model=SignalDebugReport)
+def signal_debug(
+    signal_id: int,
+    repository: MarketDataRepository = Depends(get_market_data_repository),
+) -> SignalDebugReport:
+    try:
+        return repository.debug_signal(signal_id)
+    except MarketDataError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
 @app.get("/api/v1/signals/stream")
 async def signal_stream(
     repository: MarketDataRepository = Depends(get_market_data_repository),
@@ -222,6 +246,7 @@ async def signal_stream(
                 yield "event: heartbeat\ndata: {}\n\n"
 
         for item in items:
+            logger.info("Streaming signal event id=%s symbol=%s", item.id, item.symbol)
             payload = {"signal": item.model_dump(mode="json")}
             data = json.dumps(payload)
             yield f"event: signal\ndata: {data}\n\n"
@@ -364,6 +389,16 @@ def prometheus_metrics(service: MetricsService = Depends(get_metrics_service)) -
     for status_name, count in metrics.signals.by_status.items():
         lines.append(
             f"signals_by_status_total{{status=\"{status_name}\"}} {count}"
+        )
+
+    for setup_name, count in metrics.signals.by_setup.items():
+        lines.append(
+            f"signals_by_setup_total{{setup=\"{setup_name}\"}} {count}"
+        )
+
+    for conf_name, count in metrics.signals.confidence_breakdown.items():
+        lines.append(
+            f"signals_confidence_total{{confidence=\"{conf_name}\"}} {count}"
         )
 
     return PlainTextResponse("\n".join(lines) + "\n")
