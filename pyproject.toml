@@ -10,7 +10,10 @@ dependencies = [
     "pydantic>=2.4.0",
     "python-dateutil>=2.8.2",
     "jinja2>=3.1.2",
-    "httpx>=0.27.0"
+    "httpx>=0.27.0",
+    "sqlalchemy>=2.0.29",
+    "alembic>=1.13.1",
+    "psycopg[binary]>=3.1.8"
 ]
 
 [build-system]
@@ -19,10 +22,11 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app"]
+include = ["app", "db"]
 
 [tool.setuptools.package-data]
 "app" = ["templates/*.html", "static/*", "data/*.json"]
+"db" = ["migrations/*.py", "migrations/versions/*.py", "alembic.ini"]
 
 [tool.uvicorn]
 app = "app.main:app"

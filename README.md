@@ -47,6 +47,7 @@ scripts/
 
 Further implementation and monitoring guidance is provided in [`docs/monitoring.md`](docs/monitoring.md).
 Additional details on the backtesting subsystem can be found in [`docs/backtesting.md`](docs/backtesting.md).
+Database schema and Timescale migration guidance lives in [`docs/database-schema.md`](docs/database-schema.md).
 
 ## Binance data backfill runbook
 
