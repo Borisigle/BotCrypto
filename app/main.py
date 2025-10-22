@@ -15,10 +15,12 @@ from .data_source import FileMetricsRepository, MetricsRepositoryError
 from .governance import SignalGovernance, TelegramNotifier
 from .metrics_service import MetricsService
 from .models import AggregatedMetrics, AlertDispatchResult, GovernanceStatus, HealthResponse
+from .signal_alerts import SignalAlertPipeline
 
 app = FastAPI(title="Ingestion Monitoring Service", version="0.1.0")
 
 _governance_instance: Optional[SignalGovernance] = None
+_signal_alerts_instance: Optional[SignalAlertPipeline] = None
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 static_dir = Path(__file__).resolve().parent / "static"
@@ -62,6 +64,15 @@ def get_signal_governance(
             notifier=notifier,
         )
     return _governance_instance
+
+
+def get_signal_alerts(
+    settings: Settings = Depends(get_settings),
+) -> SignalAlertPipeline:
+    global _signal_alerts_instance
+    if _signal_alerts_instance is None:
+        _signal_alerts_instance = SignalAlertPipeline(settings)
+    return _signal_alerts_instance
 
 
 @app.get("/", include_in_schema=False)
@@ -129,6 +140,20 @@ def trigger_alert(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
     return alert_manager.dispatch(metrics)
+
+
+@app.post("/api/v1/alerts/signals")
+def trigger_signal_alerts(
+    repository: FileMetricsRepository = Depends(get_repository),
+    pipeline: SignalAlertPipeline = Depends(get_signal_alerts),
+) -> Dict[str, object]:
+    try:
+        snapshot = repository.fetch_snapshot()
+    except MetricsRepositoryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+    delivered = pipeline.process(snapshot)
+    return {"delivered_count": len(delivered), "delivered_ids": delivered}
 
 
 @app.get("/api/v1/backtests/report", response_model=BacktestReport)
