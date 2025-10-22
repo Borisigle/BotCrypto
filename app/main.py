@@ -12,10 +12,13 @@ from .alerting import AlertManager
 from .backtest import BacktestOverrides, BacktestReport, BacktestRunner
 from .config import Settings, get_settings
 from .data_source import FileMetricsRepository, MetricsRepositoryError
+from .governance import SignalGovernance, TelegramNotifier
 from .metrics_service import MetricsService
-from .models import AggregatedMetrics, AlertDispatchResult, HealthResponse
+from .models import AggregatedMetrics, AlertDispatchResult, GovernanceStatus, HealthResponse
 
 app = FastAPI(title="Ingestion Monitoring Service", version="0.1.0")
+
+_governance_instance: Optional[SignalGovernance] = None
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 static_dir = Path(__file__).resolve().parent / "static"
@@ -43,6 +46,22 @@ def get_backtest_runner(
     settings: Settings = Depends(get_settings),
 ) -> BacktestRunner:
     return BacktestRunner(repository=repository, settings=settings)
+
+
+def get_signal_governance(
+    settings: Settings = Depends(get_settings),
+) -> SignalGovernance:
+    global _governance_instance
+    if _governance_instance is None:
+        notifier = TelegramNotifier(
+            settings.telegram_bot_token,
+            settings.telegram_chat_id,
+        )
+        _governance_instance = SignalGovernance(
+            rules=settings.governance_rules,
+            notifier=notifier,
+        )
+    return _governance_instance
 
 
 @app.get("/", include_in_schema=False)
@@ -84,6 +103,19 @@ def health(service: MetricsService = Depends(get_metrics_service)) -> HealthResp
         return service.health()
     except MetricsRepositoryError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+
+@app.get("/api/v1/governance", response_model=GovernanceStatus)
+def governance_status(
+    repository: FileMetricsRepository = Depends(get_repository),
+    governance: SignalGovernance = Depends(get_signal_governance),
+) -> GovernanceStatus:
+    try:
+        snapshot = repository.fetch_snapshot()
+    except MetricsRepositoryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+    return governance.evaluate(snapshot)
 
 
 @app.post("/api/v1/alerts/evaluate", response_model=AlertDispatchResult)

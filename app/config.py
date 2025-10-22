@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -18,6 +18,20 @@ class Thresholds:
 
 
 @dataclass(frozen=True)
+class GovernanceRules:
+    """Governance settings controlling signal cadence adjustments."""
+
+    drought_hours_trigger: float = 36.0
+    rolling_windows_hours: Tuple[int, ...] = (6, 12, 24)
+    minimum_primary_signals_per_window: int = 1
+    delta_oi_baseline: float = 0.65
+    delta_oi_relaxed: float = 0.5
+    medium_tier_daily_cap: int = 4
+    adjustment_history_size: int = 10
+    primary_signal_tiers: Tuple[str, ...] = ("high",)
+
+
+@dataclass(frozen=True)
 class Settings:
     """Runtime settings for the monitoring service."""
 
@@ -25,7 +39,10 @@ class Settings:
     alert_webhook_url: Optional[str]
     backtest_log_path: Path
     thresholds: Thresholds
+    governance_rules: GovernanceRules
     environment: str
+    telegram_bot_token: Optional[str]
+    telegram_chat_id: Optional[str]
 
     @property
     def snapshot_exists(self) -> bool:
@@ -60,6 +77,23 @@ def _resolve_int(value: str, fallback: int) -> int:
         return int(fallback)
 
 
+def _resolve_int_sequence(value: Optional[str], fallback: Tuple[int, ...]) -> Tuple[int, ...]:
+    if not value:
+        return fallback
+    try:
+        parts = [int(part.strip()) for part in value.split(",") if part.strip()]
+    except ValueError:
+        return fallback
+    return tuple(parts) if parts else fallback
+
+
+def _resolve_str_sequence(value: Optional[str], fallback: Tuple[str, ...]) -> Tuple[str, ...]:
+    if not value:
+        return fallback
+    parts = [part.strip() for part in value.split(",") if part.strip()]
+    return tuple(parts) if parts else fallback
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     thresholds = Thresholds(
@@ -77,10 +111,58 @@ def get_settings() -> Settings:
         ),
     )
 
+    governance_defaults = GovernanceRules()
+    governance = GovernanceRules(
+        drought_hours_trigger=_resolve_threshold(
+            os.getenv("GOVERNANCE_DROUGHT_HOURS_TRIGGER"),
+            governance_defaults.drought_hours_trigger,
+        ),
+        rolling_windows_hours=_resolve_int_sequence(
+            os.getenv("GOVERNANCE_ROLLING_WINDOWS_HOURS"),
+            governance_defaults.rolling_windows_hours,
+        ),
+        minimum_primary_signals_per_window=max(
+            0,
+            _resolve_int(
+                os.getenv("GOVERNANCE_MIN_PRIMARY_SIGNALS"),
+                governance_defaults.minimum_primary_signals_per_window,
+            ),
+        ),
+        delta_oi_baseline=_resolve_threshold(
+            os.getenv("GOVERNANCE_DELTA_OI_BASELINE"),
+            governance_defaults.delta_oi_baseline,
+        ),
+        delta_oi_relaxed=_resolve_threshold(
+            os.getenv("GOVERNANCE_DELTA_OI_RELAXED"),
+            governance_defaults.delta_oi_relaxed,
+        ),
+        medium_tier_daily_cap=max(
+            0,
+            _resolve_int(
+                os.getenv("GOVERNANCE_MEDIUM_TIER_DAILY_CAP"),
+                governance_defaults.medium_tier_daily_cap,
+            ),
+        ),
+        adjustment_history_size=max(
+            1,
+            _resolve_int(
+                os.getenv("GOVERNANCE_ADJUSTMENT_HISTORY_SIZE"),
+                governance_defaults.adjustment_history_size,
+            ),
+        ),
+        primary_signal_tiers=_resolve_str_sequence(
+            os.getenv("GOVERNANCE_PRIMARY_SIGNAL_TIERS"),
+            governance_defaults.primary_signal_tiers,
+        ),
+    )
+
     return Settings(
         metrics_snapshot_path=_resolve_snapshot_path(),
         alert_webhook_url=os.getenv("ALERT_WEBHOOK_URL"),
         backtest_log_path=_resolve_backtest_log_path(),
         thresholds=thresholds,
+        governance_rules=governance,
         environment=os.getenv("APP_ENV", "development"),
+        telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN"),
+        telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID"),
     )

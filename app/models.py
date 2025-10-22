@@ -25,6 +25,10 @@ class SignalEvent(BaseModel):
     status: str
     generated_at: datetime
     cadence_seconds: Optional[float] = None
+    tier: str = Field(
+        default="high",
+        description="Signal strength tier classification (e.g. high, medium, low).",
+    )
     outcome: Optional[str] = None
     return_pct: Optional[float] = Field(default=None, description="Realised return as fraction (0.05 = 5%)")
 
@@ -98,6 +102,36 @@ class HealthResponse(BaseModel):
     generated_at: datetime
     summary: Dict[str, HealthStatus]
     details: AggregatedMetrics
+
+
+class GovernanceAdjustment(BaseModel):
+    timestamp: datetime
+    reason: str
+    previous_delta_oi_threshold: float
+    new_delta_oi_threshold: float
+    medium_tier_allowed: bool
+    medium_tier_daily_usage: int
+    medium_tier_daily_cap: int
+    medium_tier_remaining: int
+
+
+class GovernanceStatus(BaseModel):
+    generated_at: datetime
+    trigger_hours: float
+    drought_active: bool
+    drought_hours: Optional[float]
+    delta_oi_threshold: float
+    delta_oi_baseline: float
+    delta_oi_relaxed: float
+    medium_tier_allowed: bool
+    cap_exhausted: bool
+    medium_tier_daily_usage: int
+    medium_tier_daily_cap: int
+    medium_tier_remaining: int
+    rolling_counts: Dict[str, int]
+    low_activity_windows: List[int]
+    primary_signal_tiers: List[str]
+    adjustments: List[GovernanceAdjustment]
 
 
 class BacktestOverrides(BaseModel):
