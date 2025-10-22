@@ -36,6 +36,7 @@ class Settings:
     """Runtime settings for the monitoring service."""
 
     metrics_snapshot_path: Path
+    indicator_snapshot_path: Path
     alert_webhook_url: Optional[str]
     backtest_log_path: Path
     thresholds: Thresholds
@@ -47,10 +48,16 @@ class Settings:
     signal_alerts_enabled: bool = False
     signal_alerts_include_medium: bool = False
     web_base_url: Optional[str] = None
+    redis_url: Optional[str] = None
+    indicator_cache_ttl_seconds: int = 30
 
     @property
     def snapshot_exists(self) -> bool:
         return self.metrics_snapshot_path.exists()
+
+    @property
+    def indicator_snapshot_exists(self) -> bool:
+        return self.indicator_snapshot_path.exists()
 
 
 def _resolve_snapshot_path() -> Path:
@@ -58,6 +65,13 @@ def _resolve_snapshot_path() -> Path:
     if base:
         return base
     return Path(__file__).resolve().parent / "data" / "sample_metrics.json"
+
+
+def _resolve_indicator_snapshot_path() -> Path:
+    base = Path(os.getenv("INDICATOR_SNAPSHOT_PATH", "")).expanduser()
+    if base:
+        return base
+    return Path(__file__).resolve().parent / "data" / "sample_indicator_data.json"
 
 
 def _resolve_backtest_log_path() -> Path:
@@ -173,6 +187,7 @@ def get_settings() -> Settings:
 
     return Settings(
         metrics_snapshot_path=_resolve_snapshot_path(),
+        indicator_snapshot_path=_resolve_indicator_snapshot_path(),
         alert_webhook_url=os.getenv("ALERT_WEBHOOK_URL"),
         backtest_log_path=_resolve_backtest_log_path(),
         thresholds=thresholds,
@@ -183,4 +198,9 @@ def get_settings() -> Settings:
         signal_alerts_enabled=_resolve_bool(os.getenv("SIGNAL_ALERTS_ENABLED"), False),
         signal_alerts_include_medium=_resolve_bool(os.getenv("SIGNAL_ALERTS_INCLUDE_MEDIUM"), False),
         web_base_url=os.getenv("WEB_BASE_URL"),
+        redis_url=os.getenv("REDIS_URL"),
+        indicator_cache_ttl_seconds=max(
+            1,
+            _resolve_int(os.getenv("INDICATOR_CACHE_TTL_SECONDS"), 30),
+        ),
     )

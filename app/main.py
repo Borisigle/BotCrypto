@@ -16,6 +16,13 @@ from .backtest import BacktestOverrides, BacktestReport, BacktestRunner
 from .config import Settings, get_settings
 from .data_source import FileMetricsRepository, MetricsRepositoryError
 from .governance import SignalGovernance, TelegramNotifier
+from .indicator_models import CvdCurveResponse, DeltaOiCurveResponse, VolumeProfileStatsResponse
+from .indicator_repository import (
+    IndicatorRepository,
+    IndicatorRepositoryError,
+    IndicatorSeriesNotFoundError,
+)
+from .indicator_service import IndicatorCache, IndicatorService
 from .market_data import MarketDataError, MarketDataRepository
 from .market_models import MarketSnapshot, SignalFeed, SignalFeedItem, SignalDebugReport
 from .metrics_service import MetricsService
@@ -28,6 +35,7 @@ logger = logging.getLogger(__name__)
 _governance_instance: Optional[SignalGovernance] = None
 _signal_alerts_instance: Optional[SignalAlertPipeline] = None
 _market_data_repository: Optional[MarketDataRepository] = None
+_indicator_cache_instance: Optional[IndicatorCache] = None
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 static_dir = Path(__file__).resolve().parent / "static"
@@ -87,6 +95,27 @@ def get_market_data_repository() -> MarketDataRepository:
     if _market_data_repository is None:
         _market_data_repository = MarketDataRepository()
     return _market_data_repository
+
+
+def get_indicator_repository(settings: Settings = Depends(get_settings)) -> IndicatorRepository:
+    return IndicatorRepository(settings.indicator_snapshot_path)
+
+
+def get_indicator_cache(settings: Settings = Depends(get_settings)) -> IndicatorCache:
+    global _indicator_cache_instance
+    if _indicator_cache_instance is None:
+        _indicator_cache_instance = IndicatorCache(
+            redis_url=settings.redis_url,
+            ttl_seconds=settings.indicator_cache_ttl_seconds,
+        )
+    return _indicator_cache_instance
+
+
+def get_indicator_service(
+    repository: IndicatorRepository = Depends(get_indicator_repository),
+    cache: IndicatorCache = Depends(get_indicator_cache),
+) -> IndicatorService:
+    return IndicatorService(repository=repository, cache=cache)
 
 
 @app.get("/", include_in_schema=False)
@@ -168,6 +197,120 @@ def trigger_signal_alerts(
 
     delivered = pipeline.process(snapshot)
     return {"delivered_count": len(delivered), "delivered_ids": delivered}
+
+
+@app.get(
+    "/api/v1/indicators/cvd",
+    response_model=CvdCurveResponse,
+    tags=["Indicators"],
+    summary="Retrieve cumulative volume delta curve",
+    responses={
+        404: {"description": "Requested CVD series not found"},
+        503: {"description": "Indicator datastore unavailable"},
+    },
+)
+def indicator_cvd(
+    symbol: str = Query(
+        ...,
+        description="Instrument symbol to query (e.g. BTCUSDT).",
+        examples={"perp": {"summary": "BTC perp", "value": "BTCUSDT"}},
+    ),
+    timeframe: str = Query(
+        ...,
+        description="Aggregation timeframe (e.g. 5m, 15m, 1h).",
+        examples={"intraday": {"summary": "Five minute", "value": "5m"}},
+    ),
+    session: Optional[str] = Query(
+        default=None,
+        description="Optional trading session filter (asia, london, new_york).",
+        examples={"ny": {"summary": "New York session", "value": "new_york"}},
+    ),
+    service: IndicatorService = Depends(get_indicator_service),
+) -> CvdCurveResponse:
+    """Expose the CVD curve used by the UI overlays and signal engine."""
+
+    try:
+        return service.cvd_curve(symbol=symbol, timeframe=timeframe, session=session)
+    except IndicatorSeriesNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except IndicatorRepositoryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+
+@app.get(
+    "/api/v1/indicators/delta-oi",
+    response_model=DeltaOiCurveResponse,
+    tags=["Indicators"],
+    summary="Retrieve delta open interest percentage curve",
+    responses={
+        404: {"description": "Requested ΔOI% series not found"},
+        503: {"description": "Indicator datastore unavailable"},
+    },
+)
+def indicator_delta_oi(
+    symbol: str = Query(
+        ...,
+        description="Instrument symbol to query (e.g. BTCUSDT).",
+        examples={"perp": {"summary": "BTC perp", "value": "BTCUSDT"}},
+    ),
+    timeframe: str = Query(
+        ...,
+        description="Aggregation timeframe (e.g. 5m, 15m, 1h).",
+        examples={"intraday": {"summary": "Five minute", "value": "5m"}},
+    ),
+    session: Optional[str] = Query(
+        default=None,
+        description="Optional trading session filter (asia, london, new_york).",
+        examples={"asia": {"summary": "Asia session", "value": "asia"}},
+    ),
+    service: IndicatorService = Depends(get_indicator_service),
+) -> DeltaOiCurveResponse:
+    """Expose delta open interest percentage traces for downstream consumption."""
+
+    try:
+        return service.delta_oi_percent(symbol=symbol, timeframe=timeframe, session=session)
+    except IndicatorSeriesNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except IndicatorRepositoryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+
+@app.get(
+    "/api/v1/indicators/volume-profile",
+    response_model=VolumeProfileStatsResponse,
+    tags=["Indicators"],
+    summary="Retrieve volume profile statistics",
+    responses={
+        404: {"description": "Requested volume profile not found"},
+        503: {"description": "Indicator datastore unavailable"},
+    },
+)
+def indicator_volume_profile(
+    symbol: str = Query(
+        ...,
+        description="Instrument symbol to query (e.g. BTCUSDT).",
+        examples={"perp": {"summary": "BTC perp", "value": "BTCUSDT"}},
+    ),
+    timeframe: str = Query(
+        ...,
+        description="Aggregation timeframe (e.g. 5m, 15m, 1h).",
+        examples={"session": {"summary": "Session profile", "value": "5m"}},
+    ),
+    session: Optional[str] = Query(
+        default=None,
+        description="Optional trading session filter (asia, london, new_york).",
+        examples={"london": {"summary": "London session", "value": "london"}},
+    ),
+    service: IndicatorService = Depends(get_indicator_service),
+) -> VolumeProfileStatsResponse:
+    """Expose value area, VWAP and distribution statistics for a slice."""
+
+    try:
+        return service.volume_profile(symbol=symbol, timeframe=timeframe, session=session)
+    except IndicatorSeriesNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except IndicatorRepositoryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
 
 @app.get("/api/v1/markets", response_model=MarketSnapshot)

@@ -36,6 +36,33 @@ API.
 - Win / loss counts from recent executed trades.
 - Win rate and average realised return (fractional, e.g. `0.012 == 1.2%`).
 
+## Indicator overlays API
+
+The UI overlays and the signal engine now consume indicator slices through dedicated endpoints powered by
+Timescale snapshots. Each endpoint accepts the `symbol`, `timeframe`, and optional `session` query parameters
+so consumers can request the exact slice they need.
+
+- `GET /api/v1/indicators/cvd` returns cumulative volume delta curves.
+- `GET /api/v1/indicators/delta-oi` returns delta open interest percentage traces.
+- `GET /api/v1/indicators/volume-profile` returns value area, VWAP, and histogram statistics.
+
+Example request:
+
+```bash
+curl "http://localhost:8080/api/v1/indicators/volume-profile?symbol=BTCUSDT&timeframe=5m&session=new_york"
+```
+
+### Caching and configuration
+
+Indicator responses are cached via Redis when `REDIS_URL` is configured. If Redis is unavailable the service
+falls back to an in-memory TTL cache. The following knobs control the integration:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `INDICATOR_SNAPSHOT_PATH` | `app/data/sample_indicator_data.json` | Path to the seeded Timescale export used for local development. |
+| `REDIS_URL` | _unset_ | Connection string for the Redis indicator cache. When omitted the in-memory cache is used. |
+| `INDICATOR_CACHE_TTL_SECONDS` | `30` | Cache duration applied to indicator query results. |
+
 ## Alerting hooks
 
 `POST /api/v1/alerts/evaluate` evaluates the latest metrics and optionally pushes a webhook when:
