@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from .market_models import MarketDataset, MarketInstrument, PricePoint, SeriesPoint, VolumeLevels
 from .models import SignalConfidence, SignalEvent, SignalSetup, SignalSetupType, VolumeProfile
+from .sessions import determine_session
 from .signal_scoring import SignalContext, SignalScoringEngine, SignalScoringResult
 from .signal_storage import InMemorySignalStorage, SignalRecord, SignalStorage
 
@@ -56,15 +57,6 @@ def _series_slope(series: Sequence[SeriesPoint]) -> Optional[float]:
     if len(series) < 2:
         return None
     return series[-1].value - series[-2].value
-
-
-def _determine_session(timestamp: datetime) -> str:
-    hour = timestamp.hour
-    if 0 <= hour < 8:
-        return "asia"
-    if 8 <= hour < 16:
-        return "london"
-    return "new_york"
 
 
 def _value_area(levels: Optional[VolumeLevels]) -> Optional[Tuple[float, float]]:
@@ -143,7 +135,7 @@ class SignalScoringWorker:
         delta_oi = delta_series[-1].value if delta_series else None
         cvd_value = cvd_series[-1].value if cvd_series else None
         cvd_slope = _series_slope(cvd_series)
-        session = _determine_session(timestamp)
+        session = determine_session(timestamp)
         value_area = _value_area(instrument.volume_levels)
         lvns = (
             tuple(level for level in instrument.volume_levels.lvns if level is not None)
