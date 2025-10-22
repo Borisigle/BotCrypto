@@ -1,0 +1,1 @@
+"""Ingestion monitoring service package."""

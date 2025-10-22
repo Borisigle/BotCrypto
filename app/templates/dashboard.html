@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ingestion Monitoring Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1>Ingestion Monitoring Dashboard</h1>
+        <p>Last updated: {{ metrics.generated_at.isoformat() }}</p>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="grid">
+        <article class="card status-{{ metrics.ingestion.status }}">
+          <h2>Ingestion Health</h2>
+          <ul>
+            <li>Latest source: {{ metrics.ingestion.latest_source or "n/a" }}</li>
+            <li>Latest timestamp: {{ metrics.ingestion.latest_timestamp.isoformat() if metrics.ingestion.latest_timestamp else "n/a" }}</li>
+            <li>Current latency: {{ ("%.2f"|format(metrics.ingestion.current_latency_seconds)) if metrics.ingestion.current_latency_seconds is not none else "n/a" }} s</li>
+            <li>Average latency: {{ ("%.2f"|format(metrics.ingestion.average_latency_seconds)) if metrics.ingestion.average_latency_seconds is not none else "n/a" }} s</li>
+            <li>Time since last event: {{ ("%.0f"|format(metrics.ingestion.time_since_last_event_seconds)) if metrics.ingestion.time_since_last_event_seconds is not none else "n/a" }} s</li>
+          </ul>
+        </article>
+
+        <article class="card status-{{ metrics.signals.status }}">
+          <h2>Signal Cadence</h2>
+          <ul>
+            <li>Total signals: {{ metrics.signals.total }}</li>
+            <li>Last 60 min: {{ metrics.signals.last_60_minutes }}</li>
+            <li>Last 24 h: {{ metrics.signals.last_24_hours }}</li>
+            <li>Avg cadence: {{ ("%.0f"|format(metrics.signals.cadence_seconds_avg)) if metrics.signals.cadence_seconds_avg is not none else "n/a" }} s</li>
+          </ul>
+        </article>
+
+        <article class="card status-{{ metrics.performance.status }}">
+          <h2>Performance</h2>
+          <ul>
+            <li>Wins: {{ metrics.performance.wins }}</li>
+            <li>Losses: {{ metrics.performance.losses }}</li>
+            <li>Win rate: {{ ("%.1f"|format(metrics.performance.win_rate * 100)) }}%</li>
+            <li>Average return: {{ ("%.2f"|format(metrics.performance.avg_return_pct * 100)) }}%</li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2>Ingestion sources</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Last seen</th>
+              <th>Latency (s)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for source in metrics.ingestion.sources %}
+            <tr>
+              <td>{{ source.source }}</td>
+              <td>{{ source.latest_timestamp.isoformat() }}</td>
+              <td>{{ ("%.2f"|format(source.latency_seconds)) }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="3">No ingestion sources available.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>Signals by status</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for status_name, count in metrics.signals.by_status.items() %}
+            <tr>
+              <td>{{ status_name }}</td>
+              <td>{{ count }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="2">No signals tracked.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container">
+        <p>
+          API endpoints:
+          <a href="/api/v1/metrics">/api/v1/metrics</a> ·
+          <a href="/api/v1/health">/api/v1/health</a> ·
+          <a href="/metrics/prometheus">/metrics/prometheus</a>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

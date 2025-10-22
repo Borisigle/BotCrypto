@@ -1,0 +1,88 @@
+{
+  "ingestions": [
+    {
+      "source": "binance",
+      "received_at": "2099-10-21T19:55:30Z",
+      "latency_seconds": 24.8
+    },
+    {
+      "source": "coinbase",
+      "received_at": "2099-10-21T19:56:05Z",
+      "latency_seconds": 31.2
+    },
+    {
+      "source": "kraken",
+      "received_at": "2099-10-21T19:54:12Z",
+      "latency_seconds": 28.4
+    },
+    {
+      "source": "binance",
+      "received_at": "2099-10-21T19:50:05Z",
+      "latency_seconds": 19.6
+    }
+  ],
+  "signals": [
+    {
+      "id": 1201,
+      "symbol": "BTCUSDT",
+      "status": "active",
+      "generated_at": "2099-10-21T19:55:00Z",
+      "cadence_seconds": 600,
+      "outcome": "win",
+      "return_pct": 0.012
+    },
+    {
+      "id": 1202,
+      "symbol": "ETHUSDT",
+      "status": "active",
+      "generated_at": "2099-10-21T19:45:00Z",
+      "cadence_seconds": 900,
+      "outcome": "loss",
+      "return_pct": -0.006
+    },
+    {
+      "id": 1198,
+      "symbol": "SOLUSDT",
+      "status": "stale",
+      "generated_at": "2099-10-21T18:55:00Z",
+      "cadence_seconds": 1200,
+      "outcome": "win",
+      "return_pct": 0.018
+    },
+    {
+      "id": 1188,
+      "symbol": "XRPUSDT",
+      "status": "paused",
+      "generated_at": "2099-10-21T16:25:00Z",
+      "cadence_seconds": 1800,
+      "outcome": "pending",
+      "return_pct": 0.0
+    }
+  ],
+  "executions": [
+    {
+      "signal_id": 1201,
+      "closed_at": "2099-10-21T20:20:00Z",
+      "outcome": "win",
+      "return_pct": 0.011
+    },
+    {
+      "signal_id": 1202,
+      "closed_at": "2099-10-21T20:05:00Z",
+      "outcome": "loss",
+      "return_pct": -0.005
+    },
+    {
+      "signal_id": 1198,
+      "closed_at": "2099-10-21T19:10:00Z",
+      "outcome": "win",
+      "return_pct": 0.016
+    },
+    {
+      "signal_id": 1180,
+      "closed_at": "2099-10-21T18:30:00Z",
+      "outcome": "loss",
+      "return_pct": -0.009
+    }
+  ]
+}
