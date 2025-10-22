@@ -3,160 +3,287 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Ingestion Monitoring Dashboard</title>
+    <title>Signal Observatory</title>
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
-    <header>
-      <div class="container">
-        <h1>Ingestion Monitoring Dashboard</h1>
-        <p>Last updated: {{ metrics.generated_at.isoformat() }}</p>
+    <header class="hero">
+      <div class="container hero__content">
+        <div>
+          <p class="hero__eyebrow">Signal Observatory</p>
+          <h1 class="hero__title">Live market flow and signal intelligence</h1>
+          <p class="hero__subtitle">
+            Monitor BTC and ETH order flow with delta OI overlays, cumulative volume divergence, and curated signal entries.
+          </p>
+        </div>
+        <div class="hero__meta">
+          <span class="hero__timestamp">Snapshot generated at {{ metrics.generated_at.isoformat() }}</span>
+          <a class="hero__cta" href="/api/v1/metrics">View metrics API</a>
+        </div>
       </div>
     </header>
 
-    <main class="container">
-      <section class="grid">
-        <article class="card status-{{ metrics.ingestion.status }}">
-          <h2>Ingestion Health</h2>
-          <ul>
-            <li>Latest source: {{ metrics.ingestion.latest_source or "n/a" }}</li>
-            <li>Latest timestamp: {{ metrics.ingestion.latest_timestamp.isoformat() if metrics.ingestion.latest_timestamp else "n/a" }}</li>
-            <li>Current latency: {{ ("%.2f"|format(metrics.ingestion.current_latency_seconds)) if metrics.ingestion.current_latency_seconds is not none else "n/a" }} s</li>
-            <li>Average latency: {{ ("%.2f"|format(metrics.ingestion.average_latency_seconds)) if metrics.ingestion.average_latency_seconds is not none else "n/a" }} s</li>
-            <li>Time since last event: {{ ("%.0f"|format(metrics.ingestion.time_since_last_event_seconds)) if metrics.ingestion.time_since_last_event_seconds is not none else "n/a" }} s</li>
-          </ul>
+    <main class="container main-layout">
+      <section class="status-capsules" aria-label="System status overview">
+        <article class="status-card status-{{ metrics.ingestion.status }}">
+          <header class="status-card__header">
+            <span class="status-card__label">Ingestion health</span>
+            <span class="status-card__chip">{{ metrics.ingestion.status.upper() }}</span>
+          </header>
+          <dl class="status-card__metrics">
+            <div>
+              <dt>Latest source</dt>
+              <dd>{{ metrics.ingestion.latest_source or "n/a" }}</dd>
+            </div>
+            <div>
+              <dt>Latency</dt>
+              <dd>
+                {% if metrics.ingestion.current_latency_seconds is not none %}
+                {{ "%.1f"|format(metrics.ingestion.current_latency_seconds) }} s
+                {% else %}
+                n/a
+                {% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt>Gap</dt>
+              <dd>
+                {% if metrics.ingestion.time_since_last_event_seconds is not none %}
+                {{ "%.0f"|format(metrics.ingestion.time_since_last_event_seconds) }} s
+                {% else %}
+                n/a
+                {% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt>Max latency</dt>
+              <dd>
+                {% if metrics.ingestion.max_latency_seconds is not none %}
+                {{ "%.1f"|format(metrics.ingestion.max_latency_seconds) }} s
+                {% else %}
+                n/a
+                {% endif %}
+              </dd>
+            </div>
+          </dl>
         </article>
 
-        <article class="card status-{{ metrics.signals.status }}">
-          <h2>Signal Cadence</h2>
-          <ul>
-            <li>Total signals: {{ metrics.signals.total }}</li>
-            <li>Last 60 min: {{ metrics.signals.last_60_minutes }}</li>
-            <li>Last 24 h: {{ metrics.signals.last_24_hours }}</li>
-            <li>Avg cadence: {{ ("%.0f"|format(metrics.signals.cadence_seconds_avg)) if metrics.signals.cadence_seconds_avg is not none else "n/a" }} s</li>
-            <li>Avg setup score: {{ ("%.2f"|format(metrics.signals.average_score)) if metrics.signals.average_score is not none else "n/a" }}</li>
-          </ul>
+        <article class="status-card status-{{ metrics.signals.status }}">
+          <header class="status-card__header">
+            <span class="status-card__label">Signal cadence</span>
+            <span class="status-card__chip">{{ metrics.signals.status.upper() }}</span>
+          </header>
+          <dl class="status-card__metrics">
+            <div>
+              <dt>Total tracked</dt>
+              <dd>{{ metrics.signals.total }}</dd>
+            </div>
+            <div>
+              <dt>Last 60 min</dt>
+              <dd>{{ metrics.signals.last_60_minutes }}</dd>
+            </div>
+            <div>
+              <dt>Cadence</dt>
+              <dd>
+                {% if metrics.signals.cadence_seconds_avg is not none %}
+                {{ "%.0f"|format(metrics.signals.cadence_seconds_avg) }} s
+                {% else %}
+                n/a
+                {% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt>Avg setup score</dt>
+              <dd>
+                {% if metrics.signals.average_score is not none %}
+                {{ "%.2f"|format(metrics.signals.average_score) }}
+                {% else %}
+                n/a
+                {% endif %}
+              </dd>
+            </div>
+          </dl>
         </article>
 
-        <article class="card status-{{ metrics.performance.status }}">
-          <h2>Performance</h2>
-          <ul>
-            <li>Wins: {{ metrics.performance.wins }}</li>
-            <li>Losses: {{ metrics.performance.losses }}</li>
-            <li>Win rate: {{ ("%.1f"|format(metrics.performance.win_rate * 100)) }}%</li>
-            <li>Average return: {{ ("%.2f"|format(metrics.performance.avg_return_pct * 100)) }}%</li>
-          </ul>
+        <article class="status-card status-{{ metrics.performance.status }}">
+          <header class="status-card__header">
+            <span class="status-card__label">Performance</span>
+            <span class="status-card__chip">{{ metrics.performance.status.upper() }}</span>
+          </header>
+          <dl class="status-card__metrics">
+            <div>
+              <dt>Wins</dt>
+              <dd>{{ metrics.performance.wins }}</dd>
+            </div>
+            <div>
+              <dt>Losses</dt>
+              <dd>{{ metrics.performance.losses }}</dd>
+            </div>
+            <div>
+              <dt>Win rate</dt>
+              <dd>{{ "%.1f"|format(metrics.performance.win_rate * 100) }}%</dd>
+            </div>
+            <div>
+              <dt>Average return</dt>
+              <dd>{{ "%.2f"|format(metrics.performance.avg_return_pct * 100) }}%</dd>
+            </div>
+          </dl>
         </article>
       </section>
 
-      <section class="card">
-        <h2>Ingestion sources</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Source</th>
-              <th>Last seen</th>
-              <th>Latency (s)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for source in metrics.ingestion.sources %}
-            <tr>
-              <td>{{ source.source }}</td>
-              <td>{{ source.latest_timestamp.isoformat() }}</td>
-              <td>{{ ("%.2f"|format(source.latency_seconds)) }}</td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="3">No ingestion sources available.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <section class="markets" aria-label="Market structure charts">
+        <div class="market-card" data-market-card data-symbol="BTCUSDT">
+          <header class="market-card__header">
+            <h2 class="market-card__title">BTC / USDT</h2>
+            <span class="market-card__updated" data-market-updated="BTCUSDT">--</span>
+          </header>
+          <div class="market-card__glance">
+            <div>
+              <span>Last price</span>
+              <strong data-market-stat="BTCUSDT-price">--</strong>
+            </div>
+            <div>
+              <span>ΔOI%</span>
+              <strong data-market-stat="BTCUSDT-delta">--</strong>
+            </div>
+            <div>
+              <span>CVD</span>
+              <strong data-market-stat="BTCUSDT-cvd">--</strong>
+            </div>
+          </div>
+          <div class="market-card__chart" data-market-chart="BTCUSDT"></div>
+          <dl class="market-card__levels">
+            <div>
+              <dt>VAH</dt>
+              <dd data-market-level data-symbol="BTCUSDT" data-role="vah">--</dd>
+            </div>
+            <div>
+              <dt>VAL</dt>
+              <dd data-market-level data-symbol="BTCUSDT" data-role="val">--</dd>
+            </div>
+            <div>
+              <dt>POC</dt>
+              <dd data-market-level data-symbol="BTCUSDT" data-role="poc">--</dd>
+            </div>
+            <div>
+              <dt>LVN</dt>
+              <dd data-market-level data-symbol="BTCUSDT" data-role="lvn">--</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="market-card" data-market-card data-symbol="ETHUSDT">
+          <header class="market-card__header">
+            <h2 class="market-card__title">ETH / USDT</h2>
+            <span class="market-card__updated" data-market-updated="ETHUSDT">--</span>
+          </header>
+          <div class="market-card__glance">
+            <div>
+              <span>Last price</span>
+              <strong data-market-stat="ETHUSDT-price">--</strong>
+            </div>
+            <div>
+              <span>ΔOI%</span>
+              <strong data-market-stat="ETHUSDT-delta">--</strong>
+            </div>
+            <div>
+              <span>CVD</span>
+              <strong data-market-stat="ETHUSDT-cvd">--</strong>
+            </div>
+          </div>
+          <div class="market-card__chart" data-market-chart="ETHUSDT"></div>
+          <dl class="market-card__levels">
+            <div>
+              <dt>VAH</dt>
+              <dd data-market-level data-symbol="ETHUSDT" data-role="vah">--</dd>
+            </div>
+            <div>
+              <dt>VAL</dt>
+              <dd data-market-level data-symbol="ETHUSDT" data-role="val">--</dd>
+            </div>
+            <div>
+              <dt>POC</dt>
+              <dd data-market-level data-symbol="ETHUSDT" data-role="poc">--</dd>
+            </div>
+            <div>
+              <dt>LVN</dt>
+              <dd data-market-level data-symbol="ETHUSDT" data-role="lvn">--</dd>
+            </div>
+          </dl>
+        </div>
       </section>
 
-      <section class="card">
-        <h2>Signals by status</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for status_name, count in metrics.signals.by_status.items() %}
-            <tr>
-              <td>{{ status_name }}</td>
-              <td>{{ count }}</td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="2">No signals tracked.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </section>
+      <section class="signal-feed" aria-label="Signal feed">
+        <header class="signal-feed__header">
+          <div>
+            <h2>Signal feed</h2>
+            <p>Streaming entries with delta OI confirmation and annotated zones.</p>
+          </div>
+          <form class="signal-feed__filters" id="signal-feed-filters">
+            <label>
+              Symbol
+              <select data-filter="symbol">
+                <option value="">All</option>
+              </select>
+            </label>
+            <label>
+              Confidence
+              <select data-filter="confidence">
+                <option value="">All</option>
+              </select>
+            </label>
+            <label>
+              Session
+              <select data-filter="session">
+                <option value="">All</option>
+              </select>
+            </label>
+          </form>
+        </header>
 
-      <section class="card">
-        <h2>Signals by setup</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Setup</th>
-              <th>Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for setup_name, count in metrics.signals.by_setup.items() %}
-            <tr>
-              <td>{{ setup_name }}</td>
-              <td>{{ count }}</td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="2">No setup classifications available.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </section>
-
-      <section class="card">
-        <h2>Confidence breakdown</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Confidence</th>
-              <th>Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for confidence, count in metrics.signals.confidence_breakdown.items() %}
-            <tr>
-              <td>{{ confidence }}</td>
-              <td>{{ count }}</td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="2">No confidence tags recorded.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        <div class="table-wrapper">
+          <table class="signal-table">
+            <thead>
+              <tr>
+                <th scope="col">Signal</th>
+                <th scope="col">Generated</th>
+                <th scope="col">Symbol</th>
+                <th scope="col">Confidence</th>
+                <th scope="col">Session</th>
+                <th scope="col">Tier</th>
+                <th scope="col">ΔOI%</th>
+                <th scope="col">CVD</th>
+                <th scope="col">Entry</th>
+                <th scope="col">Status</th>
+                <th scope="col">Notes</th>
+              </tr>
+            </thead>
+            <tbody data-signal-feed-body>
+              <tr class="empty">
+                <td colspan="11">Loading signals…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
 
-    <footer>
+    <footer class="site-footer">
       <div class="container">
         <p>
           API endpoints:
-          <a href="/api/v1/metrics">/api/v1/metrics</a> ·
-          <a href="/api/v1/health">/api/v1/health</a> ·
+          <a href="/api/v1/metrics">/api/v1/metrics</a>
+          ·
+          <a href="/api/v1/markets">/api/v1/markets</a>
+          ·
+          <a href="/api/v1/signals/feed">/api/v1/signals/feed</a>
+          ·
           <a href="/metrics/prometheus">/metrics/prometheus</a>
         </p>
       </div>
     </footer>
+
+    <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js" defer></script>
+    <script src="/static/dashboard.js" defer></script>
   </body>
 </html>

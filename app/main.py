@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import AsyncGenerator, Dict, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse
@@ -13,6 +15,8 @@ from .backtest import BacktestOverrides, BacktestReport, BacktestRunner
 from .config import Settings, get_settings
 from .data_source import FileMetricsRepository, MetricsRepositoryError
 from .governance import SignalGovernance, TelegramNotifier
+from .market_data import MarketDataError, MarketDataRepository
+from .market_models import MarketSnapshot, SignalFeed
 from .metrics_service import MetricsService
 from .models import AggregatedMetrics, AlertDispatchResult, GovernanceStatus, HealthResponse
 from .signal_alerts import SignalAlertPipeline
@@ -21,6 +25,7 @@ app = FastAPI(title="Ingestion Monitoring Service", version="0.1.0")
 
 _governance_instance: Optional[SignalGovernance] = None
 _signal_alerts_instance: Optional[SignalAlertPipeline] = None
+_market_data_repository: Optional[MarketDataRepository] = None
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 static_dir = Path(__file__).resolve().parent / "static"
@@ -73,6 +78,13 @@ def get_signal_alerts(
     if _signal_alerts_instance is None:
         _signal_alerts_instance = SignalAlertPipeline(settings)
     return _signal_alerts_instance
+
+
+def get_market_data_repository() -> MarketDataRepository:
+    global _market_data_repository
+    if _market_data_repository is None:
+        _market_data_repository = MarketDataRepository()
+    return _market_data_repository
 
 
 @app.get("/", include_in_schema=False)
@@ -154,6 +166,72 @@ def trigger_signal_alerts(
 
     delivered = pipeline.process(snapshot)
     return {"delivered_count": len(delivered), "delivered_ids": delivered}
+
+
+@app.get("/api/v1/markets", response_model=MarketSnapshot)
+def market_snapshot(
+    symbols: Optional[List[str]] = Query(
+        default=None,
+        description="Symbols to include in the snapshot. Defaults to all tracked instruments.",
+    ),
+    repository: MarketDataRepository = Depends(get_market_data_repository),
+) -> MarketSnapshot:
+    try:
+        snapshot = repository.market_snapshot(symbols=symbols)
+    except MarketDataError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    return snapshot
+
+
+@app.get("/api/v1/signals/feed", response_model=SignalFeed)
+def signal_feed(
+    symbol: Optional[str] = Query(
+        default=None,
+        description="Filter feed results to a single symbol (e.g. BTCUSDT).",
+    ),
+    confidence: Optional[str] = Query(
+        default=None,
+        description="Filter by confidence tag (low, medium, high).",
+    ),
+    session: Optional[str] = Query(
+        default=None,
+        description="Filter by trading session label (asia, london, new_york).",
+    ),
+    repository: MarketDataRepository = Depends(get_market_data_repository),
+) -> SignalFeed:
+    try:
+        feed = repository.signal_feed(symbol=symbol, confidence=confidence, session=session)
+    except MarketDataError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    return feed
+
+
+@app.get("/api/v1/signals/stream")
+async def signal_stream(
+    repository: MarketDataRepository = Depends(get_market_data_repository),
+) -> StreamingResponse:
+    try:
+        items = repository.stream_items()
+    except MarketDataError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+    async def event_iterator() -> AsyncGenerator[str, None]:
+        if not items:
+            while True:
+                await asyncio.sleep(15)
+                yield "event: heartbeat\ndata: {}\n\n"
+
+        for item in items:
+            payload = {"signal": item.model_dump(mode="json")}
+            data = json.dumps(payload)
+            yield f"event: signal\ndata: {data}\n\n"
+            await asyncio.sleep(0.5)
+
+        while True:
+            await asyncio.sleep(15)
+            yield "event: heartbeat\ndata: {}\n\n"
+
+    return StreamingResponse(event_iterator(), media_type="text/event-stream")
 
 
 @app.get("/api/v1/backtests/report", response_model=BacktestReport)
