@@ -26,8 +26,18 @@ from .indicator_service import IndicatorCache, IndicatorService
 from .market_data import MarketDataError, MarketDataRepository
 from .market_models import MarketSnapshot, SignalFeed, SignalFeedItem, SignalDebugReport
 from .metrics_service import MetricsService
-from .models import AggregatedMetrics, AlertDispatchResult, GovernanceStatus, HealthResponse
+from .models import (
+    AggregatedMetrics,
+    AlertDispatchResult,
+    AggTradeBatchResponse,
+    CandleBatchResponse,
+    FundingRateBatchResponse,
+    GovernanceStatus,
+    HealthResponse,
+    OpenInterestBatchResponse,
+)
 from .signal_alerts import SignalAlertPipeline
+from .timescale_repository import TimescaleRepository, TimescaleRepositoryError
 
 app = FastAPI(title="Ingestion Monitoring Service", version="0.1.0")
 logger = logging.getLogger(__name__)
@@ -36,6 +46,7 @@ _governance_instance: Optional[SignalGovernance] = None
 _signal_alerts_instance: Optional[SignalAlertPipeline] = None
 _market_data_repository: Optional[MarketDataRepository] = None
 _indicator_cache_instance: Optional[IndicatorCache] = None
+_timescale_repository: Optional[TimescaleRepository] = None
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 static_dir = Path(__file__).resolve().parent / "static"
@@ -116,6 +127,24 @@ def get_indicator_service(
     cache: IndicatorCache = Depends(get_indicator_cache),
 ) -> IndicatorService:
     return IndicatorService(repository=repository, cache=cache)
+
+
+async def get_timescale_repository(
+    settings: Settings = Depends(get_settings),
+) -> TimescaleRepository:
+    global _timescale_repository
+    if _timescale_repository is None:
+        _timescale_repository = TimescaleRepository(dsn=settings.timescale_dsn)
+        await _timescale_repository.connect()
+    return _timescale_repository
+
+
+@app.on_event("shutdown")
+async def shutdown_timescale_repository() -> None:
+    global _timescale_repository
+    if _timescale_repository is not None:
+        await _timescale_repository.close()
+        _timescale_repository = None
 
 
 @app.get("/", include_in_schema=False)
@@ -400,6 +429,114 @@ async def signal_stream(
             yield "event: heartbeat\ndata: {}\n\n"
 
     return StreamingResponse(event_iterator(), media_type="text/event-stream")
+
+
+@app.get(
+    "/api/v1/binance/candles",
+    response_model=CandleBatchResponse,
+    tags=["Binance Futures"],
+    summary="Fetch latest futures candles",
+)
+async def binance_candles(
+    symbol: str = Query(
+        ...,
+        description="Instrument symbol (e.g. BTCUSDT).",
+        examples={"perp": {"summary": "BTC perpetual", "value": "BTCUSDT"}},
+    ),
+    limit: int = Query(
+        200,
+        ge=1,
+        le=1000,
+        description="Maximum number of candle records to return.",
+    ),
+    repository: TimescaleRepository = Depends(get_timescale_repository),
+) -> CandleBatchResponse:
+    try:
+        records = await repository.fetch_latest_candles(symbol.upper(), limit)
+    except TimescaleRepositoryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    return CandleBatchResponse(symbol=symbol.upper(), candles=list(records))
+
+
+@app.get(
+    "/api/v1/binance/trades",
+    response_model=AggTradeBatchResponse,
+    tags=["Binance Futures"],
+    summary="Fetch latest aggregated trades",
+)
+async def binance_trades(
+    symbol: str = Query(
+        ...,
+        description="Instrument symbol (e.g. ETHUSDT).",
+        examples={"perp": {"summary": "ETH perpetual", "value": "ETHUSDT"}},
+    ),
+    limit: int = Query(
+        250,
+        ge=1,
+        le=2000,
+        description="Maximum number of aggregated trades to return.",
+    ),
+    repository: TimescaleRepository = Depends(get_timescale_repository),
+) -> AggTradeBatchResponse:
+    try:
+        records = await repository.fetch_latest_trades(symbol.upper(), limit)
+    except TimescaleRepositoryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    return AggTradeBatchResponse(symbol=symbol.upper(), trades=list(records))
+
+
+@app.get(
+    "/api/v1/binance/open-interest",
+    response_model=OpenInterestBatchResponse,
+    tags=["Binance Futures"],
+    summary="Fetch latest open interest snapshots",
+)
+async def binance_open_interest(
+    symbol: str = Query(
+        ...,
+        description="Instrument symbol (e.g. BTCUSDT).",
+        examples={"perp": {"summary": "BTC perpetual", "value": "BTCUSDT"}},
+    ),
+    limit: int = Query(
+        200,
+        ge=1,
+        le=500,
+        description="Maximum number of open interest samples to return.",
+    ),
+    repository: TimescaleRepository = Depends(get_timescale_repository),
+) -> OpenInterestBatchResponse:
+    try:
+        records = await repository.fetch_latest_open_interest(symbol.upper(), limit)
+    except TimescaleRepositoryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    return OpenInterestBatchResponse(symbol=symbol.upper(), open_interest=list(records))
+
+
+@app.get(
+    "/api/v1/binance/funding",
+    response_model=FundingRateBatchResponse,
+    tags=["Binance Futures"],
+    summary="Fetch latest funding observations",
+)
+async def binance_funding(
+    symbol: str = Query(
+        ...,
+        description="Instrument symbol (e.g. ETHUSDT).",
+        examples={"perp": {"summary": "ETH perpetual", "value": "ETHUSDT"}},
+    ),
+    limit: int = Query(
+        200,
+        ge=1,
+        le=1000,
+        description="Maximum number of funding observations to return.",
+    ),
+    repository: TimescaleRepository = Depends(get_timescale_repository),
+) -> FundingRateBatchResponse:
+    try:
+        records = await repository.fetch_latest_funding(symbol.upper(), limit)
+    except TimescaleRepositoryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    return FundingRateBatchResponse(symbol=symbol.upper(), funding=list(records))
 
 
 @app.get("/api/v1/backtests/report", response_model=BacktestReport)

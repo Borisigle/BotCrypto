@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class HealthStatus(str, Enum):
@@ -169,6 +169,75 @@ class GovernanceStatus(BaseModel):
     low_activity_windows: List[int]
     primary_signal_tiers: List[str]
     adjustments: List[GovernanceAdjustment]
+
+
+class CandleRecordResponse(BaseModel):
+    symbol: str
+    open_time: int
+    close_time: int
+    open_price: float
+    high_price: float
+    low_price: float
+    close_price: float
+    volume: float
+    quote_volume: float
+    number_of_trades: int
+    taker_buy_volume: float
+    taker_buy_quote_volume: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CandleBatchResponse(BaseModel):
+    symbol: str
+    candles: List[CandleRecordResponse]
+
+
+class AggTradeRecordResponse(BaseModel):
+    symbol: str
+    agg_trade_id: int
+    price: float
+    quantity: float
+    first_trade_id: int
+    last_trade_id: int
+    timestamp: int
+    is_buyer_maker: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AggTradeBatchResponse(BaseModel):
+    symbol: str
+    trades: List[AggTradeRecordResponse]
+
+
+class OpenInterestRecordResponse(BaseModel):
+    symbol: str
+    timestamp: int
+    sum_open_interest: float
+    sum_open_interest_value: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OpenInterestBatchResponse(BaseModel):
+    symbol: str
+    open_interest: List[OpenInterestRecordResponse]
+
+
+class FundingRateRecordResponse(BaseModel):
+    symbol: str
+    funding_time: int
+    funding_rate: float
+    mark_price: float
+    index_price: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FundingRateBatchResponse(BaseModel):
+    symbol: str
+    funding: List[FundingRateRecordResponse]
 
 
 class BacktestOverrides(BaseModel):
