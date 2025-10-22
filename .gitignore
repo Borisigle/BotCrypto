@@ -11,3 +11,4 @@ __pycache__/
 pytest_cache/
 .cache/
 app/data/backtest_logs/
+app/data/binance/
