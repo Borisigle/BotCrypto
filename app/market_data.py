@@ -10,6 +10,7 @@ from .market_models import (
     SignalFeed,
     SignalFeedFilters,
     SignalFeedItem,
+    SignalDebugReport,
 )
 
 DEFAULT_MARKET_DATA_PATH = Path(__file__).resolve().parent / "data" / "sample_market_data.json"
@@ -92,6 +93,51 @@ class MarketDataRepository:
     def stream_items(self) -> List[SignalFeedItem]:
         dataset = self._load_dataset()
         return list(dataset.signals)
+
+    def signal_by_id(self, signal_id: int) -> SignalFeedItem:
+        dataset = self._load_dataset()
+        for item in dataset.signals:
+            if item.id == signal_id:
+                return item
+        raise MarketDataError(f"Signal with id {signal_id} not found")
+
+    def debug_signal(self, signal_id: int) -> SignalDebugReport:
+        signal = self.signal_by_id(signal_id)
+        # Compute naive contributions for debug/inspection purposes.
+        conf = (signal.confidence or "").lower()
+        confidence_weight = {"high": 1.0, "medium": 0.65, "low": 0.35}.get(conf, 0.5)
+        delta_weight = signal.delta_oi_pct if signal.delta_oi_pct is not None else 0.0
+        if delta_weight < 0:
+            delta_weight = 0.0
+        if delta_weight > 1.0:
+            delta_weight = 1.0
+        cvd_raw = signal.cvd if signal.cvd is not None else 0.0
+        cvd_weight = cvd_raw / 2000.0
+        if cvd_weight < 0:
+            cvd_weight = 0.0
+        if cvd_weight > 1.0:
+            cvd_weight = 1.0
+
+        contributions = {
+            "confidence_weight": round(confidence_weight, 3),
+            "delta_oi_weight": round(delta_weight, 3),
+            "cvd_weight": round(cvd_weight, 3),
+        }
+        total_score = round(
+            contributions["confidence_weight"] * 0.4
+            + contributions["delta_oi_weight"] * 0.4
+            + contributions["cvd_weight"] * 0.2,
+            3,
+        )
+        return SignalDebugReport(
+            signal_id=signal.id,
+            symbol=signal.symbol,
+            confidence=signal.confidence,
+            session=signal.session,
+            tier=signal.tier,
+            contributions=contributions,
+            total_score=total_score,
+        )
 
     @property
     def data_path(self) -> Path:
