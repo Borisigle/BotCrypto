@@ -29,6 +29,7 @@ API.
 - Total tracked signals and their status breakdown.
 - Counts of signals generated within the last hour and day.
 - Derived cadence (average seconds between signals).
+- Setup categories, average setup score, and confidence breakdown derived from the signal engine.
 
 ### Performance
 

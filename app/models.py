@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -19,16 +19,50 @@ class IngestionEvent(BaseModel):
     latency_seconds: float = Field(ge=0)
 
 
+class SignalSetupType(str, Enum):
+    MOMENTUM_CONTINUATION = "momentum_continuation"
+    MEAN_REVERSION = "mean_reversion"
+    SQUEEZE_REVERSAL = "squeeze_reversal"
+    ABSORPTION = "absorption"
+
+
+class SignalConfidence(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class VolumeProfileBin(BaseModel):
+    price: float
+    buy_volume: float
+    sell_volume: float
+    total_volume: float
+
+
+class VolumeProfile(BaseModel):
+    bins: List[VolumeProfileBin]
+    value_area: Optional[Tuple[float, float]] = None
+
+
+class SignalSetup(BaseModel):
+    type: SignalSetupType
+    confidence: SignalConfidence
+    score: float
+    metadata: Dict[str, float] = Field(default_factory=dict)
+    volume_profile: Optional[VolumeProfile] = None
+
+
 class SignalEvent(BaseModel):
     id: int
     symbol: str
-    status: str
+
     generated_at: datetime
     cadence_seconds: Optional[float] = None
     tier: str = Field(
         default="high",
         description="Signal strength tier classification (e.g. high, medium, low).",
     )
+    setup: Optional[SignalSetup] = None
     outcome: Optional[str] = None
     return_pct: Optional[float] = Field(default=None, description="Realised return as fraction (0.05 = 5%)")
 
@@ -70,6 +104,9 @@ class SignalSummary(BaseModel):
     last_24_hours: int
     cadence_seconds_avg: Optional[float]
     status: HealthStatus
+    by_setup: Dict[str, int]
+    confidence_breakdown: Dict[str, int]
+    average_score: Optional[float]
 
 
 class PerformanceSummary(BaseModel):

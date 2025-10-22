@@ -9,6 +9,7 @@ and alerting hooks for stalled data feeds or cadence deviations.
 - **Aggregated metrics API** covering ingestion latency, signal counts, and win/loss performance statistics.
 - **Dashboard UI** with status panels summarising ingestion freshness, signal health, and performance KPIs.
 - **Prometheus endpoint** (`/metrics/prometheus`) ready for Grafana dashboards.
+- **Signal engine setups** classifying squeeze/reversal and absorption opportunities with confidence tagging and refined volume profiles.
 - **Alerting harness** that can push webhooks when latency or cadence thresholds are violated.
 - **Backtesting engine** producing hit-rate, expectancy, and drawdown metrics across 30–90 day windows with JSON/CSV exports.
 - **File-based snapshot store** for rapid prototyping that can be swapped with a persistent datastore later.
