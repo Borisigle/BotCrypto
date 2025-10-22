@@ -10,3 +10,4 @@ __pycache__/
 .DS_Store
 pytest_cache/
 .cache/
+app/data/backtest_logs/

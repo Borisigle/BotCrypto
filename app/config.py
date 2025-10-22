@@ -23,6 +23,7 @@ class Settings:
 
     metrics_snapshot_path: Path
     alert_webhook_url: Optional[str]
+    backtest_log_path: Path
     thresholds: Thresholds
     environment: str
 
@@ -36,6 +37,13 @@ def _resolve_snapshot_path() -> Path:
     if base:
         return base
     return Path(__file__).resolve().parent / "data" / "sample_metrics.json"
+
+
+def _resolve_backtest_log_path() -> Path:
+    base = Path(os.getenv("BACKTEST_LOG_PATH", "")).expanduser()
+    if base:
+        return base
+    return Path(__file__).resolve().parent / "data" / "backtest_logs"
 
 
 def _resolve_threshold(value: str, fallback: float) -> float:
@@ -72,6 +80,7 @@ def get_settings() -> Settings:
     return Settings(
         metrics_snapshot_path=_resolve_snapshot_path(),
         alert_webhook_url=os.getenv("ALERT_WEBHOOK_URL"),
+        backtest_log_path=_resolve_backtest_log_path(),
         thresholds=thresholds,
         environment=os.getenv("APP_ENV", "development"),
     )

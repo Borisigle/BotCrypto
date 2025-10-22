@@ -98,3 +98,78 @@ class HealthResponse(BaseModel):
     generated_at: datetime
     summary: Dict[str, HealthStatus]
     details: AggregatedMetrics
+
+
+class BacktestOverrides(BaseModel):
+    win_return_threshold: Optional[float] = Field(
+        default=None,
+        description=(
+            "Minimum fractional return required to classify a trade as a win. "
+            "When omitted, the stored outcome flag is used."
+        ),
+    )
+    loss_return_threshold: Optional[float] = Field(
+        default=None,
+        description=(
+            "Maximum fractional return tolerated before classifying a trade as a loss. "
+            "When omitted, the stored outcome flag is used."
+        ),
+    )
+    min_trade_count: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="Minimum number of trades required for a window to be considered a sufficient sample.",
+    )
+    min_win_rate: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Target win rate expectation used when evaluating each window.",
+    )
+
+
+class BacktestParameters(BaseModel):
+    windows: List[int]
+    win_return_threshold: Optional[float]
+    loss_return_threshold: Optional[float]
+    min_trade_count: int
+    min_win_rate: float
+
+
+class BacktestWindowResult(BaseModel):
+    window_days: int
+    start: datetime
+    end: datetime
+    first_trade_at: Optional[datetime]
+    last_trade_at: Optional[datetime]
+    trade_count: int
+    wins: int
+    losses: int
+    unclassified: int
+    hit_rate: float
+    expectancy: float
+    average_return: float
+    cumulative_return: float
+    max_drawdown: float
+    meets_win_rate_threshold: bool
+    sufficient_sample: bool
+
+
+class BacktestSummary(BaseModel):
+    window_days: int
+    trade_count: int
+    wins: int
+    losses: int
+    hit_rate: float
+    expectancy: float
+    cumulative_return: float
+    max_drawdown: float
+    meets_win_rate_threshold: bool
+    sufficient_sample: bool
+
+
+class BacktestReport(BaseModel):
+    generated_at: datetime
+    parameters: BacktestParameters
+    windows: List[BacktestWindowResult]
+    summary: BacktestSummary

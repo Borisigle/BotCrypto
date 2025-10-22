@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
+from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .alerting import AlertManager
+from .backtest import BacktestOverrides, BacktestReport, BacktestRunner
 from .config import Settings, get_settings
 from .data_source import FileMetricsRepository, MetricsRepositoryError
 from .metrics_service import MetricsService
@@ -35,6 +36,13 @@ def get_metrics_service(
 
 def get_alert_manager(settings: Settings = Depends(get_settings)) -> AlertManager:
     return AlertManager(settings)
+
+
+def get_backtest_runner(
+    repository: FileMetricsRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> BacktestRunner:
+    return BacktestRunner(repository=repository, settings=settings)
 
 
 @app.get("/", include_in_schema=False)
@@ -89,6 +97,97 @@ def trigger_alert(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
     return alert_manager.dispatch(metrics)
+
+
+@app.get("/api/v1/backtests/report", response_model=BacktestReport)
+def backtest_report(
+    windows: List[int] = Query(
+        default=[30, 60, 90],
+        description="Window lengths (in days) to evaluate. Provide multiple values to compute several windows.",
+    ),
+    win_return_threshold: Optional[float] = Query(
+        default=None,
+        description="Override minimum fractional return required to treat a trade as a win.",
+    ),
+    loss_return_threshold: Optional[float] = Query(
+        default=None,
+        description="Override maximum fractional return tolerated before classifying a trade as a loss.",
+    ),
+    min_trade_count: Optional[int] = Query(
+        default=None,
+        ge=0,
+        description="Minimum trades required for a window to be considered a sufficient sample.",
+    ),
+    min_win_rate: Optional[float] = Query(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Target win rate expectation used when highlighting performance.",
+    ),
+    runner: BacktestRunner = Depends(get_backtest_runner),
+) -> BacktestReport:
+    overrides = BacktestOverrides(
+        win_return_threshold=win_return_threshold,
+        loss_return_threshold=loss_return_threshold,
+        min_trade_count=min_trade_count,
+        min_win_rate=min_win_rate,
+    )
+    try:
+        return runner.run(windows=windows, overrides=overrides)
+    except MetricsRepositoryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@app.get("/api/v1/backtests/report/download", response_class=StreamingResponse)
+def download_backtest_report(
+    windows: List[int] = Query(
+        default=[30, 60, 90],
+        description="Window lengths (in days) to evaluate. Provide multiple values to compute several windows.",
+    ),
+    win_return_threshold: Optional[float] = Query(
+        default=None,
+        description="Override minimum fractional return required to treat a trade as a win.",
+    ),
+    loss_return_threshold: Optional[float] = Query(
+        default=None,
+        description="Override maximum fractional return tolerated before classifying a trade as a loss.",
+    ),
+    min_trade_count: Optional[int] = Query(
+        default=None,
+        ge=0,
+        description="Minimum trades required for a window to be considered a sufficient sample.",
+    ),
+    min_win_rate: Optional[float] = Query(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Target win rate expectation used when highlighting performance.",
+    ),
+    runner: BacktestRunner = Depends(get_backtest_runner),
+) -> StreamingResponse:
+    overrides = BacktestOverrides(
+        win_return_threshold=win_return_threshold,
+        loss_return_threshold=loss_return_threshold,
+        min_trade_count=min_trade_count,
+        min_win_rate=min_win_rate,
+    )
+    try:
+        report = runner.run(windows=windows, overrides=overrides)
+    except MetricsRepositoryError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    csv_payload = runner.to_csv(report)
+    filename = f"backtest_{report.generated_at.strftime('%Y%m%dT%H%M%SZ')}.csv"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(
+        iter([csv_payload.encode("utf-8")]),
+        media_type="text/csv",
+        headers=headers,
+    )
 
 
 @app.get("/metrics/prometheus", response_class=PlainTextResponse, include_in_schema=False)
