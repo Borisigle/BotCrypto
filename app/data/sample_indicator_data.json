@@ -1,0 +1,103 @@
+{
+  "cvd": [
+    {
+      "symbol": "BTCUSDT",
+      "timeframe": "5m",
+      "session": "new_york",
+      "generated_at": "2099-10-22T13:00:00Z",
+      "points": [
+        {"time": "2099-10-22T12:00:00Z", "value": 1215.0},
+        {"time": "2099-10-22T12:05:00Z", "value": 1284.0},
+        {"time": "2099-10-22T12:10:00Z", "value": 1320.0},
+        {"time": "2099-10-22T12:15:00Z", "value": 1348.0},
+        {"time": "2099-10-22T12:20:00Z", "value": 1362.0},
+        {"time": "2099-10-22T12:25:00Z", "value": 1398.0},
+        {"time": "2099-10-22T12:30:00Z", "value": 1435.0}
+      ]
+    },
+    {
+      "symbol": "ETHUSDT",
+      "timeframe": "15m",
+      "session": "london",
+      "generated_at": "2099-10-22T12:45:00Z",
+      "points": [
+        {"time": "2099-10-22T11:30:00Z", "value": 910.0},
+        {"time": "2099-10-22T11:45:00Z", "value": 924.0},
+        {"time": "2099-10-22T12:00:00Z", "value": 946.0},
+        {"time": "2099-10-22T12:15:00Z", "value": 958.0},
+        {"time": "2099-10-22T12:30:00Z", "value": 972.0}
+      ]
+    }
+  ],
+  "delta_oi_pct": [
+    {
+      "symbol": "BTCUSDT",
+      "timeframe": "5m",
+      "session": "new_york",
+      "generated_at": "2099-10-22T13:00:00Z",
+      "points": [
+        {"time": "2099-10-22T12:00:00Z", "value": 0.22},
+        {"time": "2099-10-22T12:05:00Z", "value": 0.27},
+        {"time": "2099-10-22T12:10:00Z", "value": 0.31},
+        {"time": "2099-10-22T12:15:00Z", "value": 0.36},
+        {"time": "2099-10-22T12:20:00Z", "value": 0.42},
+        {"time": "2099-10-22T12:25:00Z", "value": 0.48},
+        {"time": "2099-10-22T12:30:00Z", "value": 0.53}
+      ]
+    },
+    {
+      "symbol": "ETHUSDT",
+      "timeframe": "1h",
+      "session": null,
+      "generated_at": "2099-10-22T13:00:00Z",
+      "points": [
+        {"time": "2099-10-22T09:00:00Z", "value": 0.18},
+        {"time": "2099-10-22T10:00:00Z", "value": 0.24},
+        {"time": "2099-10-22T11:00:00Z", "value": 0.21},
+        {"time": "2099-10-22T12:00:00Z", "value": 0.26},
+        {"time": "2099-10-22T13:00:00Z", "value": 0.29}
+      ]
+    }
+  ],
+  "volume_profile": [
+    {
+      "symbol": "BTCUSDT",
+      "timeframe": "5m",
+      "session": "new_york",
+      "generated_at": "2099-10-22T12:55:00Z",
+      "vah": 27220.0,
+      "val": 26920.0,
+      "poc": 27080.0,
+      "vwap": 27065.0,
+      "value_area_volume_pct": 0.68,
+      "low_volume_nodes": [26940.0, 27150.0],
+      "high_volume_nodes": [27020.0, 27090.0],
+      "distribution": [
+        {"price": 26920.0, "volume": 182.0},
+        {"price": 26980.0, "volume": 215.0},
+        {"price": 27040.0, "volume": 248.0},
+        {"price": 27100.0, "volume": 192.0},
+        {"price": 27160.0, "volume": 156.0}
+      ]
+    },
+    {
+      "symbol": "ETHUSDT",
+      "timeframe": "15m",
+      "session": "london",
+      "generated_at": "2099-10-22T12:40:00Z",
+      "vah": 1828.0,
+      "val": 1796.0,
+      "poc": 1812.0,
+      "vwap": 1810.5,
+      "value_area_volume_pct": 0.72,
+      "low_volume_nodes": [1802.0, 1818.0],
+      "high_volume_nodes": [1808.0, 1812.0],
+      "distribution": [
+        {"price": 1796.0, "volume": 94.0},
+        {"price": 1804.0, "volume": 132.0},
+        {"price": 1812.0, "volume": 168.0},
+        {"price": 1820.0, "volume": 141.0}
+      ]
+    }
+  ]
+}
