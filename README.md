@@ -100,3 +100,23 @@ After a run, validate data completeness with the following steps:
    ```
 
 Document any gaps and rerun the backfill with `--full-refresh` if needed. The idempotent writer rewrites the JSONL snapshots atomically, preserving data integrity for downstream ingestion.
+
+---
+
+Monorepo scaffold
+
+This branch introduces a monorepo-style scaffold alongside the existing service to support future expansion:
+
+- api/ — FastAPI service with a /health endpoint and uvicorn entrypoint
+- worker/ — Async worker stub using the shared config module
+- web/ — Next.js 14 + TypeScript app with a placeholder page calling the API health
+- shared/python/monorepo_common — Shared configuration and logging helpers for Python services
+- infra/ — Infrastructure and deployment manifests
+- db/ — Database schemas and migrations
+- scripts/ — Operational utilities and runbooks
+
+Environment configuration
+
+- A shared .env.example is provided at the repo root. Copy it to .env and adjust values.
+- Python services (api, worker) load the shared .env automatically via pydantic-settings and python-dotenv.
+- The Next.js app loads NEXT_PUBLIC_* variables from the repo root .env via next.config.js.

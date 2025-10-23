@@ -12,3 +12,12 @@ pytest_cache/
 .cache/
 app/data/backtest_logs/
 app/data/binance/
+# Node/Next.js
+node_modules/
+.next/
+web/node_modules/
+web/.next/
+# Build artifacts
+build/
+dist/
+coverage/
