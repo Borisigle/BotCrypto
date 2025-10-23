@@ -31,3 +31,27 @@ app = "app.main:app"
 reload = true
 port = 8080
 host = "0.0.0.0"
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+include = "\.(py|pyi)$"
+
+[tool.isort]
+profile = "black"
+line_length = 88
+src_paths = ["app", "tests"]
+known_first_party = ["app"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-q"
+testpaths = ["tests"]
